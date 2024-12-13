@@ -8,61 +8,183 @@ from controller.controller import Controller
 from view.screen import Screen
 import pygame as p
 import os
+import cv2
 
-
-# Actor Network
+# Enhanced Actor Network
 class Actor(nn.Module):
-    def __init__(self, input_shape):
+    def __init__(self, input_shape=(3, 256, 256)):
         super(Actor, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=1)
-        self.fc1 = nn.Linear(128 * 104 * 111, 512)  # Adjust based on input shape after convs
+        # Extensive convolutional block with multiple layers and pooling
+        self.conv_layers = nn.Sequential(
+            # First Convolution Block
+            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 128x128
+
+            # Second Convolution Block
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 64x64
+
+            # Third Convolution Block
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 32x32
+
+            # Fourth Convolution Block
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 16x16
+
+            # Fifth Convolution Block
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)  # Output: 8x8
+        )
+
+        # Calculate the flattened size dynamically
+        with torch.no_grad():
+            test_input = torch.zeros(1, *input_shape)
+            conv_out = self.conv_layers(test_input)
+            flattened_size = conv_out.view(1, -1).size(1)
+
+        # Extensive fully connected layers
+        self.fc_layers = nn.Sequential(
+            nn.Linear(flattened_size, 2048),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3)
+        )
+
+        # Output layer
         self.fc_out = nn.Linear(512, 1)
 
     def forward(self, x):
-        x = torch.relu(self.conv1(x))
-        x = torch.relu(self.conv2(x))
-        x = torch.relu(self.conv3(x))
+        x = self.conv_layers(x)
         x = torch.flatten(x, start_dim=1)
-        x = torch.relu(self.fc1(x))
+        x = self.fc_layers(x)
         action_prob = torch.sigmoid(self.fc_out(x))
         return action_prob
 
 
-# Critic Network
+# Enhanced Critic Network
 class Critic(nn.Module):
-    def __init__(self, input_shape):
+    def __init__(self, input_shape=(3, 256, 256)):
         super(Critic, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=1)
-        self.fc1 = nn.Linear(128 * 104 * 111, 512)  # Adjust based on input shape after convs
+        # Extensive convolutional block with multiple layers and pooling
+        self.conv_layers = nn.Sequential(
+            # First Convolution Block
+            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 128x128
+
+            # Second Convolution Block
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 64x64
+
+            # Third Convolution Block
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 32x32
+
+            # Fourth Convolution Block
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 16x16
+
+            # Fifth Convolution Block
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)  # Output: 8x8
+        )
+
+        # Calculate the flattened size dynamically
+        with torch.no_grad():
+            test_input = torch.zeros(1, *input_shape)
+            conv_out = self.conv_layers(test_input)
+            flattened_size = conv_out.view(1, -1).size(1)
+
+        # Extensive fully connected layers
+        self.fc_layers = nn.Sequential(
+            nn.Linear(flattened_size, 2048),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3)
+        )
+
+        # Output layer with softplus
         self.fc_out = nn.Linear(512, 1)
         self.softplus = nn.Softplus()
 
     def forward(self, x):
-        x = torch.relu(self.conv1(x))
-        x = torch.relu(self.conv2(x))
-        x = torch.relu(self.conv3(x))
+        x = self.conv_layers(x)
         x = torch.flatten(x, start_dim=1)
-        x = torch.relu(self.fc1(x))
-        state_value = self.softplus(self.fc_out(x))  # Positive values
+        x = self.fc_layers(x)
+        state_value = self.softplus(self.fc_out(x))
         return state_value
 
 
 # Helper Function: Normalize Observations
 def preprocess_observation(observation):
     observation = observation / 255.0  # Normalize RGB values to [0, 1]
-    observation = np.transpose(observation, (2, 0, 1))  # Change to (C, H, W) for PyTorch
     return torch.tensor(observation, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
-
-
 
 def get_observation(screen):
     """
     Generate an observation of the current game state.
-    Captures the RGB values of the screen except for the score display.
+    Captures the RGB values of the screen except for the score display,
+    and resizes it to (batch_size, 3, 256, 256).
     """
     # Capture the screen's pixel data
     screen_pixels = p.surfarray.array3d(screen.screen)  # Shape: (width, height, 3)
@@ -73,7 +195,14 @@ def get_observation(screen):
     # Define the region to exclude (score part)
     observation = screen_pixels[Config.DRAW_TEXT_Y:, :, :]  # Exclude the top `score_height` pixels
 
-    return observation
+    # Resize the observation to (256, 256)
+    resized_observation = cv2.resize(observation, (256, 256))  # Shape: (256, 256, 3)
+
+    # Change the shape to (batch_size, 3, 256, 256)
+    batch_observation = np.transpose(resized_observation, (2, 0, 1))  # Shape: (batch_size, 3, 256, 256)
+
+    return batch_observation
+
 
 # Function to Save Models
 def save_models(actor, critic, save_dir, step):
@@ -91,8 +220,8 @@ if __name__ == "__main__":
     controller = Controller()
     screen = Screen(controller)
 
-    actor = Actor(input_shape=(3, 864, 916))
-    critic = Critic(input_shape=(3, 864, 916))
+    actor = Actor(input_shape=(3, 256, 256))
+    critic = Critic(input_shape=(3, 256, 256))
 
     actor_optimizer = optim.Adam(actor.parameters(), lr=1e-4)
     critic_optimizer = optim.Adam(critic.parameters(), lr=1e-4)
